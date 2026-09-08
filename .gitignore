@@ -1,0 +1,14 @@
+# 构建产物
+build/
+*.o
+*.so
+*.autosave
+
+# 打包产物（deb 发布到 GitHub Releases，不入库）
+dist/*.deb
+dist/dde-shell-eye-plugin_*/
+
+# 临时文件
+*.tmp
+*.log
+*.bak
