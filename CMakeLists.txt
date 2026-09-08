@@ -3,7 +3,7 @@ project(cartoon-eye-win VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOMOC OFF)  # 交叉编译：用 Linux moc 手动生成
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network TextToSpeech)
 
@@ -12,6 +12,9 @@ add_executable(CartoonEye WIN32
     learncore.h learncore.cpp
     eyewindow.h eyewindow.cpp
     learnwindow.h learnwindow.cpp
+    moc_learncore.cpp
+    moc_eyewindow.cpp
+    moc_learnwindow.cpp
 )
 
 target_link_libraries(CartoonEye PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::TextToSpeech)
