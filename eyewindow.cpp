@@ -369,6 +369,9 @@ void EyeWindow::buildMenu()
 {
     m_menu = new QMenu(this);
     m_menu->setTitle(QStringLiteral("设置"));
+    // 根菜单（设置）高度固定为 225px
+    // 二级菜单（眼睛样式/宠物样式/学习内容/显示位置）由 QMenu 原生按内容自动调整高度
+    m_menu->setFixedHeight(225);
 
     // ---- 眼睛样式 ----
     auto *eyeMenu = m_menu->addMenu(QStringLiteral("眼睛样式"));
