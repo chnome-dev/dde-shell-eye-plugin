@@ -18,7 +18,7 @@ AppletItem {
 
     // ============ Dock 布局：显示位置（0左 1中 2右） ============
     property int posPref: Applet.posPref
-    property int dockOrder: posPref === 0 ? 5 : (posPref === 1 ? 13 : 28)
+    property int dockOrder: posPref === 0 ? 4 : (posPref === 1 ? 13 : 28)  // 左4避开搜索(5), 中13, 右28
     property int dockPosition: posPref === 2 ? 1 : 0
     property bool shouldVisible: Applet.visible && Applet.supported
     readonly property bool isVerticalDock: Panel.position === Dock.Left || Panel.position === Dock.Right
@@ -1626,6 +1626,17 @@ AppletItem {
                         MenuRow { label: qsTr("百科学习"); isHeader: true }
                         MenuRow { label: qsTr("维基百科精选词条（含简介）");        checked: root.catState[9]; onClicked: root.toggleCategory(9) }
                     }
+                }
+            }
+        }
+
+        // 二级菜单内容高度变化时同步调整菜单高度（自适应）
+        Connections {
+            target: menuCol
+            function onImplicitHeightChanged() {
+                if (root.menuLevel !== 0 && eyeMenu.popupVisible) {
+                    eyeMenu.menuH = Math.max(100, menuCol.implicitHeight + 56)
+                    root.repositionEyeMenu()
                 }
             }
         }
