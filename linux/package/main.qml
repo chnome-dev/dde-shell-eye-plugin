@@ -18,9 +18,45 @@ AppletItem {
 
     // ============ Dock 布局：显示位置（0左 1中 2右） ============
     property int posPref: Applet.posPref
-    property int dockOrder: posPref === 0 ? 4 : (posPref === 1 ? 13 : 28)  // 左4避开搜索(5), 中13, 右28
+    // dockOrder 动态计算：dock 按 dockOrder 从小到大从左到右分区排列
+    //   左侧区 (0,10]、中间区 (10,20]、右侧区 (20,30]
+    //   左侧显示 -> 排既有插件最右侧(左侧区末尾)；右侧显示 -> 排既有插件最左侧(右侧区开头)
+    property int dockOrder: posPref === 0 ? 10 : (posPref === 1 ? 13 : 21)
     property int dockPosition: posPref === 2 ? 1 : 0
     property bool shouldVisible: Applet.visible && Applet.supported
+
+    // 遍历 dock 面板既有插件的 dockOrder，计算自己的排序值（排除自身）
+    function refreshDockOrder() {
+        if (root.posPref === 1) { root.dockOrder = 13; return }          // 居中：启动器右侧
+        var leftMax = 0    // 左侧区 (0,10] 最大值
+        var rightMin = 30  // 右侧区 (20,30] 最小值
+        var m = Applet.parent ? Applet.parent.appletItems : null
+        if (m) {
+            for (var i = 0; i < m.rowCount(); ++i) {
+                var d = m.data(m.index(i, 0), Qt.UserRole + 1)
+                if (!d || d === root) continue                            // 跳过自身
+                var o = parseInt(d.dockOrder)
+                if (isNaN(o)) continue
+                if (o > 0 && o <= 10) leftMax = Math.max(leftMax, o)
+                else if (o > 20 && o <= 30) rightMin = Math.min(rightMin, o)
+            }
+        }
+        if (root.posPref === 0) {
+            // 左侧：紧跟既有左侧插件之后（上界 10）
+            root.dockOrder = leftMax > 0 ? Math.min(10, leftMax + 1) : 10
+        } else {
+            // 右侧：紧挨既有右侧插件之前（下界 21）
+            root.dockOrder = rightMin < 30 ? Math.max(21, rightMin - 1) : 21
+        }
+    }
+
+    onPosPrefChanged: root.refreshDockOrder()
+    Connections {
+        target: Applet.parent ? Applet.parent.appletItems : null
+        function onRowsInserted() { root.refreshDockOrder() }
+        function onRowsRemoved() { root.refreshDockOrder() }
+        function onDataChanged() { root.refreshDockOrder() }
+    }
     readonly property bool isVerticalDock: Panel.position === Dock.Left || Panel.position === Dock.Right
     readonly property real dockSize: Panel.rootObject ? Panel.rootObject.dockItemMaxSize : 40
 
@@ -99,7 +135,7 @@ AppletItem {
         onTriggered: root.pickWanderTarget()
     }
 
-    Component.onCompleted: lastMoveTime = Date.now()
+    Component.onCompleted: { lastMoveTime = Date.now(); root.refreshDockOrder() }
 
     Timer {
         interval: 33
@@ -1070,8 +1106,8 @@ AppletItem {
                 anchors.fill: parent
                 transform: Rotation {
                     id: snakeRot
-                    origin.x: parent.width / 2
-                    origin.y: parent.height / 2
+                    origin.x: parent ? parent.width / 2 : 0
+                    origin.y: parent ? parent.height / 2 : 0
                     angle: 0
                 }
                 Rectangle { width: parent.width*0.60; height: parent.width*0.30; radius: parent.width*0.15; color: "#7DBE5A"; border.width: 1.5; border.color: "#3E5A28"; x: parent.width*0.20; y: parent.width*0.26 }
@@ -1322,7 +1358,7 @@ AppletItem {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         preventStealing: true
-        onClicked: {
+        onClicked: (mouse) => {
             if (mouse.button === Qt.RightButton) {
                 root.showEyeMenu()
             } else {
@@ -1330,7 +1366,7 @@ AppletItem {
             }
             mouse.accepted = true
         }
-        onPressed: {
+        onPressed: (mouse) => {
             mouse.accepted = true
         }
     }
@@ -1384,14 +1420,9 @@ AppletItem {
     function gotoMenuLevel(lv) {
         menuLevel = lv
         if (menuFlick) menuFlick.contentY = 0
-        // 根菜单（设置）固定 225px；二级菜单等下一帧内容布局完成后按实际高度自适应
+        // 窗口高度由 menuH 绑定按实际内容自动调整；下一帧内容布局完成后重新定位
         Qt.callLater(function() {
-            if (root.menuLevel === 0) {
-                eyeMenu.menuH = 225
-            } else {
-                eyeMenu.menuH = Math.max(100, menuCol.implicitHeight + 56)
-            }
-            if (eyeMenu.popupVisible) {
+            if (eyeMenu.visible) {
                 root.repositionEyeMenu()
             }
         })
@@ -1444,10 +1475,11 @@ AppletItem {
     // ============ 右键菜单（PanelMenu 两级菜单） ============
     PanelMenu {
         id: eyeMenu
-        property int menuH: 225
+        // 菜单窗口高度：根菜单固定 225；二级菜单按实际内容(头部30+顶距10+上下边距16+内容)自适应，上限 520 超出滚动
+        property int menuH: root.menuLevel === 0 ? 225 : Math.max(100, Math.min(520, (menuCol ? menuCol.implicitHeight : 100) + 56))
         height: menuH
         onHeightChanged: {
-            if (popupVisible) {
+            if (eyeMenu.visible) {
                 root.repositionEyeMenu()
             }
         }
@@ -1630,15 +1662,6 @@ AppletItem {
             }
         }
 
-        // 二级菜单内容高度变化时同步调整菜单高度（自适应）
-        Connections {
-            target: menuCol
-            function onImplicitHeightChanged() {
-                if (root.menuLevel !== 0 && eyeMenu.popupVisible) {
-                    eyeMenu.menuH = Math.max(100, menuCol.implicitHeight + 56)
-                    root.repositionEyeMenu()
-                }
-            }
-        }
     }
+
 }
