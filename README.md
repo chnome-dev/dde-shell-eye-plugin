@@ -1,6 +1,6 @@
 # 卡通眼珠 DDE Dock 插件 (dde-shell-eye-plugin)
 
-在 deepin/UOS v25 任务栏（Dock）上显示一对卡通眼珠，眼珠会跟随鼠标移动（算法参照 GNOME `gnome-applets` 的 GEyes），并支持单击弹出学习内容、右键切换样式。
+在 deepin/UOS v25 任务栏（Dock）上显示一对卡通眼珠（当前版本 **v1.9.6**，另有 [Windows 11 版](https://github.com/chnome-dev/dde-shell-eye-plugin/tree/windows)：桌面悬浮卡通眼睛 CartoonEye），眼珠会跟随鼠标移动（算法参照 GNOME `gnome-applets` 的 GEyes），并支持单击弹出学习内容、右键切换样式。
 
 ## ✨ 功能特性
 
@@ -39,7 +39,7 @@ cmake --build build -j$(nproc)
 ## 📦 安装
 
 ```bash
-sudo dpkg -i dde-shell-eye-plugin_1.9.0_amd64.deb
+sudo dpkg -i dde-shell-eye-plugin_1.9.6_amd64.deb
 sudo apt -f install   # 如提示依赖缺失
 ```
 
