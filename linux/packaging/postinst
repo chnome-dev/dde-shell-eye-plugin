@@ -1,0 +1,99 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2026
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# 单包双架构部署脚本：检测当前桌面是 deepin V20 还是 V25，
+# 只把「这一版任务栏真正会扫描的那一套插件」放进生效位置。
+#
+# 为什么 V20 用符号链接，而不是把 Qt5 版 .so 直接装进
+# /usr/lib/dde-dock/plugins/：
+#   1) /usr/lib/dde-dock/plugins/ 这个目录在 deepin 25 上同样存在
+#      （实测 deepin 25 有它），把 Qt5 插件直接装进去会被 V25 的托盘加载器
+#      扫到，Qt5 插件在 Qt6 进程里必然加载失败并刷一堆报错。
+#   2) 符号链接不是 dpkg 登记在册的文件，postinst/prerm 增删它不会破坏包的
+#      文件清单（直接 rm 掉一个 dpkg 装出来的文件，dpkg 会认为包损坏，
+#      而且每次升级都得再删一次）。
+#
+# 本脚本刻意不用 `set -e`：安装脚本里任何一步失败都不该让 dpkg 卡在
+# half-configured。所有步骤尽力而为，最后一定 exit 0。
+
+V20_STAGE="/usr/lib/dde-shell-eye-plugin/v20/libcartoon-eye.so"
+V20_DIR="/usr/lib/dde-dock/plugins"
+V20_LINK="$V20_DIR/libcartoon-eye.so"
+RESTART_HELPER="/usr/lib/dde-shell-eye-plugin/restart-dock.sh"
+
+# ---------------------------------------------------------------------------
+# 平台判定
+#
+# 判定依据与坑（都是在 deepin 25 上实测出来的）：
+#   * V25 的 libdde-shell 的 soname 是 libdde-shell.so.1（库版本 2.0.x），
+#     所以不能拿 libdde-shell.so.2 判断 —— 那样在 V25 上会判成「不是 V25」。
+#   * /usr/lib/dde-dock/plugins/ 在 V25 上也存在，所以它只能作为
+#     「排除 V25 之后」的 V20 依据，不能拿来先判 V20。
+#   * /usr/lib/x86_64-linux-gnu/dde-shell/ 是 V25 的插件目录，但本包装完
+#     也会有这个目录，所以绝不能拿它判断平台。
+# ---------------------------------------------------------------------------
+detect_platform()
+{
+    # ---- V25 / V23：dde-shell（Qt6 任务栏）----
+    if command -v dde-shell >/dev/null 2>&1; then
+        echo v25
+        return
+    fi
+    for f in /usr/lib/x86_64-linux-gnu/libdde-shell.so.* \
+             /usr/lib/libdde-shell.so.*; do
+        if [ -e "$f" ]; then
+            echo v25
+            return
+        fi
+    done
+
+    # ---- V20 / V15：dde-dock（Qt5 任务栏）----
+    if command -v dde-dock >/dev/null 2>&1 || [ -d "$V20_DIR" ]; then
+        echo v20
+        return
+    fi
+
+    # ---- 兜底：读版本文件 ----
+    if [ -f /etc/deepin-version ]; then
+        _ver=$(sed -n 's/^[[:space:]]*Version=//p' /etc/deepin-version | head -1)
+        case "$_ver" in
+            20*|15*) echo v20; return ;;
+            25*|23*) echo v25; return ;;
+        esac
+    fi
+
+    echo unknown
+}
+
+PLATFORM=$(detect_platform)
+echo "dde-shell-eye-plugin: 检测到平台 = $PLATFORM"
+
+case "$PLATFORM" in
+v20)
+    if [ -f "$V20_STAGE" ]; then
+        mkdir -p "$V20_DIR"
+        rm -f "$V20_LINK" 2>/dev/null || true
+        ln -sfn "$V20_STAGE" "$V20_LINK"
+        echo "dde-shell-eye-plugin: 已启用 deepin V20 (dde-dock) 版插件"
+        echo "  $V20_LINK -> $V20_STAGE"
+    else
+        echo "dde-shell-eye-plugin: 警告 - 包内缺少 V20 插件二进制（$V20_STAGE）" >&2
+    fi
+    ;;
+v25)
+    # V25 不需要 V20 那一套，顺手清掉历史遗留
+    rm -f "$V20_LINK" 2>/dev/null || true
+    echo "dde-shell-eye-plugin: 已启用 deepin V25 (dde-shell) 版插件"
+    ;;
+*)
+    echo "dde-shell-eye-plugin: 未识别的桌面环境，未链接 V20 版插件（请手动确认）"
+    ;;
+esac
+
+# 让任务栏重新加载插件（V20 的 dde-dock 不支持热加载）
+if [ -x "$RESTART_HELPER" ]; then
+    "$RESTART_HELPER" "$PLATFORM" || true
+fi
+
+exit 0

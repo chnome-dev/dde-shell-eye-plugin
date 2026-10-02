@@ -1,0 +1,11 @@
+{
+    "api": "1.2",
+    "name": "cartoon-eye",
+    "pluginName[zh_CN]": "卡通眼珠",
+    "pluginName[en_US]": "Cartoon Eye",
+    "description[zh_CN]": "任务栏卡通眼珠：盯着鼠标、多主题切换，点击弹出学习内容。",
+    "description[en_US]": "A cartoon eye on the taskbar that follows your mouse. Click to learn poems, words and wiki entries.",
+    "version": "1.9.7",
+    "author": "CHNOME",
+    "website": "https://github.com/chnome-dev/dde-shell-eye-plugin"
+}

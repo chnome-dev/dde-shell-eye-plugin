@@ -1,6 +1,7 @@
 # 构建产物
 build/
 build-win/
+build-cross/
 *.o
 *.obj
 *.exe
@@ -12,6 +13,9 @@ dist-win/
 *.zip
 *.7z
 
+# 打包脚本的临时校验目录
+.verify.*
+
 # Qt 交叉编译环境（本地）
 qt-win/
 
@@ -19,3 +23,7 @@ qt-win/
 *.tmp
 *.log
 *.bak
+
+# 沙箱 / 助手工作目录（不属于源码）
+.workbuddy/
+.Trash-0/

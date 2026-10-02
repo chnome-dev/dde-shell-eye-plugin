@@ -1,0 +1,51 @@
+#!/bin/sh
+# SPDX-FileCopyrightText: 2026
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# 卸载 / 升级前：删掉 postinst 建立的符号链接，并让任务栏把插件卸下来。
+#
+# 只删「我们自己创建的软链」，绝不碰 dpkg 登记在册的文件——那样会破坏包的
+# 文件清单（dpkg -V 报缺失），而且升级时还要反复删。
+#
+# dpkg 会把动作作为 $1 传进来：remove / upgrade / deconfigure / failed-upgrade ...
+
+V20_LINK="/usr/lib/dde-dock/plugins/libcartoon-eye.so"
+RESTART_HELPER="/usr/lib/dde-shell-eye-plugin/restart-dock.sh"
+
+case "$1" in
+upgrade|failed-upgrade|deconfigure)
+    # 升级：只清理软链，postinst 会重建并重启任务栏，不必在这里重启
+    rm -f "$V20_LINK" 2>/dev/null || true
+    exit 0
+    ;;
+esac
+
+# 真正的卸载：先摘软链，再重启任务栏，让插件立刻从任务栏上消失
+#
+# 平台判定必须和 postinst 保持一致，尤其是这两个坑：
+#   * V25 的 soname 是 libdde-shell.so.1，不是 .so.2
+#   * /usr/lib/dde-dock/plugins/ 在 V25 上也存在，不能拿来先判 V20
+PLATFORM="unknown"
+if command -v dde-shell >/dev/null 2>&1; then
+    PLATFORM="v25"
+else
+    for f in /usr/lib/x86_64-linux-gnu/libdde-shell.so.* /usr/lib/libdde-shell.so.*; do
+        if [ -e "$f" ]; then
+            PLATFORM="v25"
+            break
+        fi
+    done
+fi
+if [ "$PLATFORM" = "unknown" ]; then
+    if command -v dde-dock >/dev/null 2>&1 || [ -d /usr/lib/dde-dock/plugins ]; then
+        PLATFORM="v20"
+    fi
+fi
+
+rm -f "$V20_LINK" 2>/dev/null || true
+
+if [ -x "$RESTART_HELPER" ]; then
+    "$RESTART_HELPER" "$PLATFORM" || true
+fi
+
+exit 0

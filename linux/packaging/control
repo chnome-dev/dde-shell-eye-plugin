@@ -1,0 +1,29 @@
+Package: dde-shell-eye-plugin
+Version: 1.9.7
+Section: utils
+Priority: optional
+Architecture: amd64
+Depends: dde-shell (>= 2.0) | dde-dock (>= 5.0)
+Recommends: ffmpeg, libdde-shell, libdde-shell-dock
+Installed-Size: 6000
+Maintainer: CHNOME <CHNOME@localhost>
+Description: Cartoon eye applet for the DDE taskbar (deepin V20 / V25)
+ A cartoon eye sitting on the taskbar that follows your mouse cursor.
+ 20 eye themes + 14 pet themes, click to pop up learning content
+ (Tang/Song poetry, Shijing, IELTS/TOEFL/CET4/CET6, vocabulary, wiki)
+ with online TTS, plus a two-level context menu.
+ .
+ This single .deb ships BOTH plugin builds and the postinst script
+ enables the matching one automatically:
+   * deepin V25 / V23 (dde-shell 2.x, Qt6)
+       -> /usr/lib/x86_64-linux-gnu/dde-shell/
+   * deepin 20 / 15      (dde-dock 5.x, Qt5)
+       -> /usr/lib/dde-dock/plugins/  (via symlink, created by postinst)
+ .
+ The V20 build is compiled against Qt 5.11.3 / glibc 2.28 and only needs
+ libQt5Core/Gui/Widgets/Network, so it loads on every deepin V20 release
+ (20.0 ~ 20.9). The V25 build is untouched.
+ .
+ 任务栏卡通眼珠插件（同一 deb 同时兼容 deepin V20 与 V25）。
+ 单个包内含两套插件：V25 用 dde-shell(Qt6) 版、V20 用 dde-dock(Qt5) 版，
+ 安装脚本自动检测系统并只启用匹配的那一套。

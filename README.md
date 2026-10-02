@@ -2,7 +2,9 @@
 
 deepin/UOS 任务栏卡通眼珠插件的 **Windows 11 移植版**：桌面悬浮卡通眼睛，跟随鼠标移动（GEyes 算法），左键弹出学习内容，右键切换样式。
 
-> Linux 版（dde-shell 任务栏插件）在 `main` 分支：https://github.com/chnome-dev/dde-shell-eye-plugin/tree/main
+> Linux 版（deepin 任务栏插件）在 `linux/` 目录，**同一个 deb 同时支持
+> deepin V25 / V23（dde-shell）与 deepin V20 / V15（dde-dock）**。
+> 从源码构建、打包、测试的完整说明见 [`linux/PACKAGING.md`](linux/PACKAGING.md)。
 
 ## ✨ 功能
 
@@ -55,6 +57,34 @@ cmake --build build-win -j$(nproc)
 ├── app.rc / eye.ico         # Windows 资源与图标
 └── data/*.json              # 学习数据（10 个分类）
 ```
+
+## 🐧 Linux 版（deepin 任务栏插件）
+
+代码在 `linux/`，一个 deb 同时兼容两代 deepin：
+
+| | deepin V25 / V23 | deepin V20 / V15 |
+|---|---|---|
+| 任务栏 | `dde-shell` 2.x（Qt6） | `dde-dock` 5.x（Qt5） |
+| 实现 | QML + C++ applet | 纯 QWidget / QPainter |
+| 插件路径 | `/usr/lib/x86_64-linux-gnu/dde-shell/` | `/usr/lib/dde-dock/plugins/` |
+
+包内同时含两套插件，`postinst` 自动检测系统并**只启用匹配的那一套**
+（V20 那套通过符号链接挂到 `/usr/lib/dde-dock/plugins/`，因此不会在 V25 上被误加载）。
+
+```bash
+# 构建 V25 插件
+cd linux && cmake -B build && cmake --build build -j$(nproc)
+
+# 构建 V20 插件（在 deepin V20 上原生编译；或交叉编译，见 PACKAGING.md）
+cd linux/v20 && bash build-v20.sh
+
+# 打成单 deb
+cd linux && bash packaging/make-dual-deb.sh
+```
+
+> ⚠️ **1.9.6 及更早版本在 deepin V20 上无法安装** —— 那些包只包含 dde-shell 版实现，
+> 且 `Depends` 写死了 `dde-shell / libdde-shell / libdde-shell-dock >= 2.0`。
+> 根因分析与修复说明见 [`linux/PACKAGING.md`](linux/PACKAGING.md)。
 
 ## 📄 License
 
